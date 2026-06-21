@@ -1,0 +1,14 @@
+{
+	"DeepSeek": {
+		"billingMode": "usage",
+		"quotaUrl": "https://api.deepseek.com/user/balance",
+		"totalLimit": 0,
+		"limitUnit": "cny",
+		"usedAmount": 0,
+		"resetPeriod": "never",
+		"note": "",
+		"balance": 9.38,
+		"balanceCurrency": "CNY",
+		"lastFetch": 1782052871312
+	}
+}

@@ -16,7 +16,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg); color: var(--fg);
-  min-height: 100vh; display: flex; flex-direction: column;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
 }
 /* Header */
 .header {
@@ -29,9 +29,9 @@ body {
 .header-actions { margin-left: auto; display: flex; gap: 8px; }
 
 /* Layout */
-.container { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 52px); }
+.container { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 52px); align-items: stretch; }
 .sidebar {
-  width: 300px; min-width: 260px; background: var(--bg2);
+  width: 300px; min-width: 260px; height: 100%; align-self: stretch; background: var(--bg2);
   border-right: 1px solid var(--border); display: flex; flex-direction: column;
   overflow: hidden; flex-shrink: 0;
 }
@@ -45,6 +45,11 @@ body {
 }
 .sidebar-header h2 { font-size: 13px; text-transform: uppercase; color: var(--fg2); letter-spacing: .5px; }
 .provider-list { flex: 1; overflow-y: auto; min-height: 0; }
+.sidebar-footer {
+  padding: 8px 12px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 4px; flex-shrink: 0;
+}
+.sidebar-footer .btn { width: 100%; justify-content: flex-start; padding: 6px 12px; font-size: 12px; }
 .provider-item {
   padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 10px; transition: background .15s;
@@ -112,7 +117,7 @@ label { display: block; font-size: 12px; color: var(--fg2); margin-bottom: 4px; 
 }
 .model-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
 .model-table tr:hover td { background: var(--bg3); }
-.model-table .id { font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--green); font-size: 12px; }
+.model-table .id { font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--green); font-size: 12px; white-space: nowrap; max-width: 420px; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
 .model-table .name-cell { max-width: 200px; }
 .model-table .name-cell input { background: transparent; border: 1px solid transparent; padding: 2px 6px; }
 .model-table .name-cell input:hover { border-color: var(--border); }
@@ -136,6 +141,23 @@ label { display: block; font-size: 12px; color: var(--fg2); margin-bottom: 4px; 
 }
 .toggle.on { background: var(--accent); }
 .toggle.on::after { left: 18px; background: #fff; }
+
+/* Collapsible card */
+.card-header-collapsible {
+  cursor: pointer; user-select: none; transition: background .15s;
+}
+.card-header-collapsible:hover { background: var(--bg3); }
+.card-header-collapsible .collapse-icon {
+  color: var(--fg2); font-size: 12px; transition: transform .2s;
+  display: inline-block; width: 16px; text-align: center; flex-shrink: 0;
+}
+.card-header-collapsible:hover .collapse-icon { color: var(--fg); }
+.card-header-collapsible .collapse-icon.collapsed { transform: rotate(-90deg); }
+.card-header-collapsible .card-header-actions .btn {
+  position: relative; z-index: 2;
+}
+.card-collapsible { transition: max-height .3s ease, opacity .2s ease, padding .3s ease; overflow: hidden; max-height: 6000px; }
+.card-collapsible.collapsed { max-height: 0 !important; opacity: 0; padding-top: 0 !important; padding-bottom: 0 !important; margin: 0 !important; }
 
 /* Modal */
 .modal-overlay {
@@ -216,6 +238,28 @@ input[list]::-webkit-calendar-picker-indicator {
 }
 input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
 
+/* Quota card */
+.quota-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.quota-item {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px; text-align: center;
+}
+.quota-item .q-label { font-size: 11px; color: var(--fg2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+.quota-item .q-value { font-size: 20px; font-weight: 700; font-family: 'Cascadia Code', monospace; }
+.quota-item .q-sub { font-size: 11px; color: var(--fg2); margin-top: 2px; }
+.quota-bar-container { margin-top: 12px; }
+.quota-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--fg2); margin-bottom: 4px; }
+.quota-bar {
+  height: 8px; background: var(--bg4); border-radius: 4px; overflow: hidden;
+}
+.quota-bar-fill {
+  height: 100%; border-radius: 4px; transition: width .4s ease;
+}
+.quota-bar-fill.low { background: var(--green); }
+.quota-bar-fill.medium { background: var(--yellow); }
+.quota-bar-fill.high { background: var(--orange); }
+.quota-bar-fill.critical { background: var(--red); }
+
 /* Responsive */
 @media (max-width: 768px) {
   .container { flex-direction: column; }
@@ -231,10 +275,8 @@ input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
   <span style="color:var(--fg2);font-size:13px" id="configPath"></span>
   <div class="header-actions">
     <button class="btn" onclick="loadConfig()">🔄 刷新</button>
-    <button class="btn" onclick="openConfigFile()">📄 打开配置</button>
     <button class="btn" onclick="openQuickAdd()">⚡ 快速添加</button>
     <button class="btn" onclick="openCCSwitchImport()">📥 CC Switch 导入</button>
-    <button class="btn" onclick="openLogViewer()">📋 日志</button>
     <button class="btn btn-primary" onclick="openAddProvider()">＋ 自定义添加</button>
   </div>
 </div>
@@ -245,6 +287,11 @@ input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
       <h2>Providers</h2>
     </div>
     <div class="provider-list" id="providerList"></div>
+    <div class="sidebar-footer">
+      <button class="btn" onclick="openConfigFile()">📄 打开配置</button>
+      <button class="btn" onclick="openLogViewer()">📋 日志</button>
+      <button class="btn" onclick="openAbout()">ℹ 关于</button>
+    </div>
   </div>
   <div class="main" id="mainContent">
     <div class="empty-state">
@@ -496,7 +543,124 @@ input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
   </div>
 </div>
 
+<!-- 用量限额配置模态框 -->
+<div class="modal-overlay" id="quotaSettingsModal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <h3>⚙ 用量限额配置</h3>
+      <button class="btn btn-icon" onclick="closeModal('quotaSettingsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--fg2);font-size:13px;margin-bottom:16px;">配置当前 Provider 的用量查询 URL 和限额信息。</p>
+      <div class="form-row">
+        <label>计费模式</label>
+        <select id="qs_billingMode" onchange="toggleSubscriptionFields()">
+          <option value="usage">按量计费</option>
+          <option value="subscription">套餐订阅</option>
+        </select>
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <label>用量查询 URL</label>
+        <input type="text" id="qs_quotaUrl" placeholder="https://api.example.com/v1/usage">
+        <span style="font-size:11px;color:var(--fg2);margin-top:4px;">用于查询当前用量，留空则仅显示手动填写的限额。</span>
+      </div>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="form-row">
+          <label>总限额</label>
+          <input type="number" id="qs_totalLimit" placeholder="如: 1000000000" step="1">
+        </div>
+        <div class="form-row">
+          <label>限额单位</label>
+          <select id="qs_limitUnit">
+            <option value="tokens">Tokens</option>
+            <option value="requests">请求次数</option>
+            <option value="usd">USD</option>
+            <option value="cny">CNY</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <label>已用量（手动填写）</label>
+        <input type="number" id="qs_usedAmount" placeholder="自动查询时可留空" step="1">
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <label>重置周期</label>
+        <select id="qs_resetPeriod">
+          <option value="daily">每天</option>
+          <option value="weekly">每周</option>
+          <option value="monthly">每月</option>
+          <option value="never">不重置</option>
+        </select>
+      </div>
+      <!-- 套餐订阅专属字段 -->
+      <div id="qs_subscriptionFields" style="display:none;">
+        <div class="form-row" style="margin-top:12px;">
+          <label>订阅状态</label>
+          <select id="qs_subStatus">
+            <option value="active">🟢 生效中</option>
+            <option value="expiring">🟡 即将到期</option>
+            <option value="expired">🔴 已过期</option>
+            <option value="cancelled">⚫ 已取消</option>
+          </select>
+        </div>
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-row">
+            <label>开始时间</label>
+            <input type="date" id="qs_startDate">
+          </div>
+          <div class="form-row">
+            <label>结束时间</label>
+            <input type="date" id="qs_endDate">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px;">
+          <label>官网/控制台链接</label>
+          <input type="text" id="qs_consoleUrl" placeholder="https://console.example.com/billing">
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <label>备注</label>
+        <input type="text" id="qs_note" placeholder="如: 火山引擎 Coding Plan 月额度">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('quotaSettingsModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveQuotaSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- 关于模态框 -->
+<div class="modal-overlay" id="aboutModal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <h3>ℹ 关于</h3>
+      <button class="btn btn-icon" onclick="closeModal('aboutModal')">✕</button>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">⚡</div>
+      <h2 style="margin-bottom:4px;">Copilot Model Manager</h2>
+      <p style="color:var(--fg2);font-size:13px;margin-bottom:16px;">GitHub Copilot 自定义模型配置的 GUI 管理工具</p>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;text-align:left;font-size:13px;line-height:1.8;">
+        <div><b>版本</b>：v1.1.0</div>
+        <div><b>许可证</b>：Apache-2.0</div>
+        <div><b>运行环境</b>：Node.js / 浏览器</div>
+        <div><b>配置路径</b>：<code id="aboutConfigPath" style="color:var(--green);font-size:12px;">...</code></div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <a href="https://github.com/PN-BUG/Copilot-Model-Manager" target="_blank" class="btn btn-sm" style="text-decoration:none;">🐙 GitHub</a>
+        <a href="https://github.com/PN-BUG/Copilot-Model-Manager/releases" target="_blank" class="btn btn-sm" style="text-decoration:none;">📦 Releases</a>
+        <a href="https://github.com/PN-BUG/Copilot-Model-Manager/issues" target="_blank" class="btn btn-sm" style="text-decoration:none;">🐛 Issues</a>
+      </div>
+      <p style="margin-top:16px;font-size:11px;color:var(--fg2);">Built with ❤️ for the VS Code Copilot community</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('aboutModal')">关闭</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // === State ===
@@ -505,6 +669,8 @@ let apiKeys = {};  // { providerName: { masked, source } }
 let selectedIndex = -1;
 let fetchedModels = [];
 let urlHistory = {};  // { providerName: [url1, url2, ...] }
+let quotaData = {};   // { providerName: { quotaUrl, totalLimit, limitUnit, usedAmount, resetPeriod, note, lastFetch } }
+let collapsedModels = JSON.parse(localStorage.getItem('cmm_collapsedModels') || '{}');  // { providerName: bool }
 
 // === API ===
 async function api(method, path, body) {
@@ -516,6 +682,23 @@ async function api(method, path, body) {
   return data;
 }
 
+// === Toggle ===
+function toggleModelsCollapse(name) {
+  collapsedModels[name] = !collapsedModels[name];
+  localStorage.setItem('cmm_collapsedModels', JSON.stringify(collapsedModels));
+  renderMain();
+}
+
+// === About ===
+function openAbout() {
+  // Fetch config path from server and display it
+  api('GET', '/api/paths').then(paths => {
+    const el = document.getElementById('aboutConfigPath');
+    if (el && paths.config) el.textContent = paths.config;
+  }).catch(() => {});
+  openModal('aboutModal');
+}
+
 // === Load ===
 async function loadConfig() {
   try {
@@ -524,6 +707,8 @@ async function loadConfig() {
     apiKeys = keys;
     // 加载 URL 历史
     try { urlHistory = await api('GET', '/api/url-history'); } catch { urlHistory = {}; }
+    // 加载用量数据
+    await loadQuotaData();
     document.getElementById('configPath').textContent = 'chatLanguageModels.json';
     renderProviders();
     if (selectedIndex >= 0 && selectedIndex < config.length) {
@@ -584,15 +769,28 @@ function renderMain() {
   main.innerHTML = `
     <div class="card">
       <div class="card-header">
-        <h3>${esc(p.name)}</h3>
+        <h3>📊 用量限额</h3>
         <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="openQuotaSettings()">⚙ 配置</button>
+          <button class="btn btn-sm" onclick="fetchQuota()">🔄 查询用量</button>
+        </div>
+      </div>
+      <div class="card-body" id="quotaBody">
+        ${renderQuotaContent(p)}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header card-header-collapsible" onclick="toggleModelsCollapse('${esc(p.name)}')">
+        <h3><span class="collapse-icon ${collapsedModels[p.name] ? 'collapsed' : ''}">▼</span> ${esc(p.name)} <span style="color:var(--fg2);font-size:12px;font-weight:400;">(${models.length} 个模型)</span></h3>
+        <div class="card-header-actions" style="display:flex;gap:8px;" onclick="event.stopPropagation()">
           <button class="btn btn-sm" onclick="openFetchModels()">🔍 自动拉取</button>
           <button class="btn btn-sm" onclick="openAddModel()">＋ 手动添加</button>
           <button class="btn btn-sm" onclick="openApiKeySettings()">🔑 API Key</button>
           <button class="btn btn-sm btn-danger" onclick="deleteProvider(${selectedIndex})">🗑 删除 Provider</button>
         </div>
       </div>
-      <div class="card-body" style="padding:0;">
+      <div class="card-body card-collapsible ${collapsedModels[p.name] ? 'collapsed' : ''}" style="padding:0;">
         <div style="overflow-x:auto; max-height: 60vh; overflow-y: auto;">
           <table class="model-table">
             <thead>
@@ -989,45 +1187,51 @@ function toggleAllFetch() {
 }
 
 async function importFetchedModels() {
-  const p = config[selectedIndex];
-  const existingIds = new Set((p.models || []).map(m => m.id));
-  let added = 0;
+  try {
+    const p = config[selectedIndex];
+    if (!p.models) p.models = [];
+    const existingIds = new Set(p.models.map(m => m.id));
+    let added = 0;
 
-  fetchedModels.forEach((m, i) => {
-    const cb = document.getElementById(`fm_check_${i}`);
-    if (!cb || !cb.checked || cb.disabled) return;
-    if (existingIds.has(m.id)) return;
+    fetchedModels.forEach((m, i) => {
+      const cb = document.getElementById(`fm_check_${i}`);
+      if (!cb || !cb.checked || cb.disabled) return;
+      if (existingIds.has(m.id)) return;
 
-    // 推断 API Type
-    let apiType = p.apiType || 'chat-completions';
-    let url = '';
-    if (p.models && p.models.length > 0) {
-      url = p.models[0].url || '';
-      if (!apiType && p.models[0].apiType) apiType = p.models[0].apiType;
-    }
+      // 推断 API Type
+      let apiType = p.apiType || 'chat-completions';
+      let url = '';
+      if (p.models && p.models.length > 0) {
+        url = p.models[0].url || '';
+        if (!apiType && p.models[0].apiType) apiType = p.models[0].apiType;
+      }
 
-    p.models.push({
-      id: m.id,
-      name: m.name || m.id,
-      url,
-      apiType,
-      toolCalling: true,
-      vision: false,
-      maxInputTokens: 128000,
-      maxOutputTokens: 16000,
+      p.models.push({
+        id: m.id,
+        name: m.name || m.id,
+        url,
+        apiType,
+        toolCalling: true,
+        vision: false,
+        maxInputTokens: 128000,
+        maxOutputTokens: 16000,
+      });
+      added++;
     });
-    added++;
-  });
 
-  if (added > 0) {
-    await saveConfig();
-    renderMain();
-    renderProviders();
-    toast(`已导入 ${added} 个模型`, 'success');
-  } else {
-    toast('没有选中任何新模型', 'info');
+    if (added > 0) {
+      await saveConfig();
+      renderMain();
+      renderProviders();
+      toast(`已导入 ${added} 个模型`, 'success');
+    } else {
+      toast('没有选中任何新模型', 'info');
+    }
+    closeModal('fetchModelsModal');
+  } catch (e) {
+    toast('导入失败: ' + e.message, 'error');
+    console.error('importFetchedModels error:', e);
   }
-  closeModal('fetchModelsModal');
 }
 
 // === API Key Management ===
@@ -1149,6 +1353,228 @@ function toast(msg, type = 'info') {
 
 // === Utils ===
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function formatNumber(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e4) return (n / 1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+function getUnitLabel(unit) {
+  const map = { tokens: 'Tokens', requests: '次', usd: 'USD', cny: 'CNY' };
+  return map[unit] || unit || 'Tokens';
+}
+
+// === Quota ===
+async function loadQuotaData() {
+  try { quotaData = await api('GET', '/api/quota'); }
+  catch { quotaData = {}; }
+}
+
+function renderQuotaContent(p) {
+  const q = quotaData[p.name] || {};
+  const total = q.totalLimit;
+  const used = q.usedAmount;
+  const unit = q.limitUnit || 'tokens';
+  const unitLabel = getUnitLabel(unit);
+  const pct = total > 0 ? Math.min(100, Math.round((used || 0) / total * 100)) : 0;
+  const barClass = pct >= 90 ? 'critical' : pct >= 70 ? 'high' : pct >= 40 ? 'medium' : 'low';
+  const isSubscription = q.billingMode === 'subscription';
+  const hasBalance = q.balance != null;
+
+  if (!total && !used && !q.quotaUrl && !isSubscription && !hasBalance) {
+    return `<div class="empty-state" style="padding:20px;">
+      <p style="font-size:13px;">尚未配置用量限额</p>
+      <p style="font-size:12px;color:var(--fg2);">点击"配置"设置限额和查询 URL</p>
+    </div>`;
+  }
+
+  // 订阅状态标签
+  const subStatusLabels = { active: '🟢 生效中', expiring: '🟡 即将到期', expired: '🔴 已过期', cancelled: '⚫ 已取消' };
+  const subStatusColors = { active: 'var(--green)', expiring: 'var(--yellow)', expired: 'var(--red)', cancelled: 'var(--fg2)' };
+
+  // 剩余天数
+  let remainingDays = null;
+  if (q.endDate) {
+    const end = new Date(q.endDate);
+    const now = new Date();
+    remainingDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  }
+
+  return `
+    ${isSubscription ? `
+    <!-- 套餐订阅信息 -->
+    <div class="quota-grid">
+      <div class="quota-item">
+        <div class="q-label">订阅状态</div>
+        <div class="q-value" style="font-size:16px;color:${subStatusColors[q.subStatus] || 'var(--fg)'};">${subStatusLabels[q.subStatus] || '—'}</div>
+        <div class="q-sub">${q.billingMode === 'subscription' ? '套餐订阅' : '按量计费'}</div>
+      </div>
+      <div class="quota-item">
+        <div class="q-label">剩余时间</div>
+        <div class="q-value" style="font-size:16px;color:${remainingDays != null && remainingDays <= 7 ? 'var(--red)' : remainingDays != null && remainingDays <= 30 ? 'var(--yellow)' : 'var(--green)'};">${remainingDays != null ? remainingDays + ' 天' : '—'}</div>
+        <div class="q-sub">${q.endDate ? '至 ' + q.endDate : ''}</div>
+      </div>
+    </div>
+    <div class="quota-grid" style="margin-top:12px;">
+      <div class="quota-item">
+        <div class="q-label">开始时间</div>
+        <div class="q-value" style="font-size:14px;">${q.startDate || '—'}</div>
+      </div>
+      <div class="quota-item">
+        <div class="q-label">结束时间</div>
+        <div class="q-value" style="font-size:14px;">${q.endDate || '—'}</div>
+      </div>
+    </div>
+    ${q.consoleUrl ? `<div style="margin-top:8px;text-align:center;"><a href="${esc(q.consoleUrl)}" target="_blank" class="btn btn-sm" style="text-decoration:none;">🔗 打开控制台</a></div>` : ''}
+    ` : ''}
+
+    ${hasBalance ? `
+    <!-- 余额信息 -->
+    <div class="quota-grid" style="${isSubscription ? 'margin-top:12px;' : ''}">
+      <div class="quota-item" style="grid-column: span 2;">
+        <div class="q-label">💰 余额</div>
+        <div class="q-value" style="font-size:24px;color:${q.balance <= 0 ? 'var(--red)' : q.balance < 10 ? 'var(--yellow)' : 'var(--green)'};">${q.balanceCurrency || ''} ${q.balance.toFixed(2)}</div>
+      </div>
+    </div>
+    ` : ''}
+
+    ${total || used ? `
+    <!-- 用量统计 -->
+    <div class="quota-grid" style="${isSubscription ? 'margin-top:12px;' : ''}">
+      <div class="quota-item">
+        <div class="q-label">已用量</div>
+        <div class="q-value" style="color:${pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--green)'};">${formatNumber(used)}</div>
+        <div class="q-sub">${unitLabel}</div>
+      </div>
+      <div class="quota-item">
+        <div class="q-label">总限额</div>
+        <div class="q-value">${formatNumber(total)}</div>
+        <div class="q-sub">${unitLabel}${q.resetPeriod ? ' · ' + ({daily:'每天重置',weekly:'每周重置',monthly:'每月重置',never:'不重置'})[q.resetPeriod] : ''}</div>
+      </div>
+    </div>
+    ${total > 0 ? `
+    <div class="quota-bar-container">
+      <div class="quota-bar-label">
+        <span>使用率 ${pct}%</span>
+        <span>剩余 ${formatNumber(total - (used || 0))} ${unitLabel}</span>
+      </div>
+      <div class="quota-bar">
+        <div class="quota-bar-fill ${barClass}" style="width:${pct}%;"></div>
+      </div>
+    </div>` : ''}
+    ` : ''}
+
+    ${q.quotaUrl ? `<div style="margin-top:8px;font-size:11px;color:var(--fg2);">查询 URL: ${esc(q.quotaUrl)}</div>` : ''}
+    ${q.note ? `<div style="margin-top:4px;font-size:12px;color:var(--fg2);">📝 ${esc(q.note)}</div>` : ''}
+    ${q.lastFetch ? `<div style="margin-top:4px;font-size:11px;color:var(--fg2);">🕐 上次查询: ${new Date(q.lastFetch).toLocaleString()}</div>` : ''}
+  `;
+}
+
+function openQuotaSettings() {
+  const p = config[selectedIndex];
+  const q = quotaData[p.name] || {};
+  document.getElementById('qs_quotaUrl').value = q.quotaUrl || '';
+  document.getElementById('qs_totalLimit').value = q.totalLimit || '';
+  document.getElementById('qs_limitUnit').value = q.limitUnit || 'tokens';
+  document.getElementById('qs_usedAmount').value = q.usedAmount || '';
+  document.getElementById('qs_resetPeriod').value = q.resetPeriod || 'monthly';
+  document.getElementById('qs_note').value = q.note || '';
+  document.getElementById('qs_billingMode').value = q.billingMode || 'usage';
+  document.getElementById('qs_subStatus').value = q.subStatus || 'active';
+  document.getElementById('qs_startDate').value = q.startDate || '';
+  document.getElementById('qs_endDate').value = q.endDate || '';
+  document.getElementById('qs_consoleUrl').value = q.consoleUrl || '';
+  toggleSubscriptionFields();
+  openModal('quotaSettingsModal');
+}
+
+function toggleSubscriptionFields() {
+  const mode = document.getElementById('qs_billingMode').value;
+  document.getElementById('qs_subscriptionFields').style.display = mode === 'subscription' ? 'block' : 'none';
+}
+
+async function saveQuotaSettings() {
+  const p = config[selectedIndex];
+  const billingMode = document.getElementById('qs_billingMode').value;
+  const q = {
+    billingMode,
+    quotaUrl: document.getElementById('qs_quotaUrl').value.trim(),
+    totalLimit: parseInt(document.getElementById('qs_totalLimit').value) || 0,
+    limitUnit: document.getElementById('qs_limitUnit').value,
+    usedAmount: parseInt(document.getElementById('qs_usedAmount').value) || 0,
+    resetPeriod: document.getElementById('qs_resetPeriod').value,
+    note: document.getElementById('qs_note').value.trim(),
+  };
+  if (billingMode === 'subscription') {
+    q.subStatus = document.getElementById('qs_subStatus').value;
+    q.startDate = document.getElementById('qs_startDate').value;
+    q.endDate = document.getElementById('qs_endDate').value;
+    q.consoleUrl = document.getElementById('qs_consoleUrl').value.trim();
+  }
+  quotaData[p.name] = q;
+  await api('POST', '/api/quota', quotaData);
+  closeModal('quotaSettingsModal');
+  renderMain();
+  toast('用量限额配置已保存', 'success');
+}
+
+async function fetchQuota() {
+  const p = config[selectedIndex];
+  const q = quotaData[p.name] || {};
+  if (!q.quotaUrl) {
+    toast('请先配置用量查询 URL', 'info');
+    openQuotaSettings();
+    return;
+  }
+  try {
+    const keyData = await api('GET', `/api/key/${encodeURIComponent(p.name)}`).catch(() => null);
+    const apiKey = keyData?.key || '';
+    const result = await api('POST', '/api/quota/fetch', {
+      providerName: p.name,
+      quotaUrl: q.quotaUrl,
+      apiKey,
+    });
+    // 尝试从返回数据中提取用量
+    const data = result.data;
+    let used = null;
+    let balance = null;
+    let currency = null;
+    // 常见格式: { total_usage: 123 } / { usage: { total_tokens: 123 } } / { data: { usage: 123 } }
+    if (typeof data === 'object') {
+      used = data.total_usage || data.used || data.usage?.total_tokens || data.usage?.total || data.data?.usage || data.data?.total_usage;
+      if (used == null && data.usage && typeof data.usage === 'number') used = data.usage;
+    }
+    // DeepSeek 余额格式: { balance_infos: [{ currency, total_balance, ... }] }
+    if (data.balance_infos && Array.isArray(data.balance_infos) && data.balance_infos.length > 0) {
+      const info = data.balance_infos[0];
+      balance = parseFloat(info.total_balance);
+      currency = info.currency || null;
+    }
+    if (used != null) {
+      q.usedAmount = parseInt(used);
+      q.lastFetch = Date.now();
+      quotaData[p.name] = q;
+      await api('POST', '/api/quota', quotaData);
+      renderMain();
+      toast(`用量已更新: ${formatNumber(used)} ${getUnitLabel(q.limitUnit)}`, 'success');
+    } else if (balance != null) {
+      // 余额模式：存储余额信息
+      q.balance = balance;
+      q.balanceCurrency = currency;
+      q.lastFetch = Date.now();
+      quotaData[p.name] = q;
+      await api('POST', '/api/quota', quotaData);
+      renderMain();
+      toast(`余额已更新: ${currency || ''} ${balance}`, 'success');
+    } else {
+      toast('查询成功但无法解析用量数据，请检查返回格式', 'info');
+      console.log('Quota response:', data);
+    }
+  } catch (e) {
+    toast('用量查询失败: ' + e.message, 'error');
+  }
+}
 
 // === 快速添加模板 ===
 const PROVIDER_TEMPLATES = [

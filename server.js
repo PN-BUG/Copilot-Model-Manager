@@ -99,6 +99,9 @@ const CCSWITCH_DB_PATH = path.join(
   '.cc-switch', 'cc-switch.db'
 );
 
+// 用量限额数据存储
+const QUOTA_PATH = path.join(__dirname, '.quota-data.json');
+
 // 环境变量映射（可选，优先级低于 .api-keys.json）
 const ENV_KEY_MAP = {
   '火山引擎 Coding Plan': 'VOLCENGINE_API_KEY',
@@ -447,6 +450,46 @@ async function handleRequest(req, res) {
       return json(200, result);
     }
 
+    // GET /api/quota - 读取用量限额数据
+    if (pathname === '/api/quota' && req.method === 'GET') {
+      const quota = readJSON(QUOTA_PATH) || {};
+      log.debug('读取用量数据:', Object.keys(quota).length, '个 Provider');
+      return json(200, quota);
+    }
+
+    // POST /api/quota - 保存用量限额数据
+    if (pathname === '/api/quota' && req.method === 'POST') {
+      const body = await readBody(req);
+      writeJSON(QUOTA_PATH, body);
+      log.info('用量数据已保存');
+      return json(200, { success: true });
+    }
+
+    // POST /api/quota/fetch - 从远程 API 查询用量
+    if (pathname === '/api/quota/fetch' && req.method === 'POST') {
+      const body = await readBody(req);
+      const { providerName, quotaUrl, apiKey } = body;
+      
+      if (!quotaUrl) return json(400, { error: '缺少 quotaUrl' });
+      
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+        
+        const res = await httpRequest(quotaUrl, { headers });
+        log.info(`用量查询: ${providerName} → ${res.status}`);
+        
+        if (res.status === 200) {
+          return json(200, { data: res.data, url: quotaUrl });
+        } else {
+          return json(res.status, { error: `HTTP ${res.status}`, data: res.data });
+        }
+      } catch (e) {
+        log.error('用量查询失败:', providerName, e.message);
+        return json(500, { error: e.message });
+      }
+    }
+
     // GET / - 前端页面
     if (pathname === '/' || pathname === '/index.html') {
       const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -515,6 +558,7 @@ async function handleRequest(req, res) {
         config: CONFIG_PATH,
         keys: KEYS_PATH,
         urlHistory: URL_HISTORY_PATH,
+        quota: QUOTA_PATH,
         ccswitch: CCSWITCH_DB_PATH,
         logs: LOG_PATH,
         logDir: LOG_DIR,

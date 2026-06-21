@@ -8,11 +8,16 @@
 
 - **Provider 管理** — 添加/编辑/删除 Provider，支持自定义 Vendor、API Type、Base URL
 - **Model 管理** — 为每个 Provider 配置多个模型，支持 Tool Calling / Vision / Thinking 标记
+- **模型列表折叠** — 模型列表支持折叠/展开，状态持久化到 localStorage
 - **自动拉取** — 通过 API Key + Models URL 自动获取远程模型列表，一键导入
+- **用量限额** — 可视化展示每个 Provider 的用量/余额/订阅状态，支持远程 API 自动查询
+- **订阅管理** — 支持订阅模式，显示订阅状态、起止时间、剩余天数、控制台链接
+- **DeepSeek 余额** — 自动解析 DeepSeek `balance_infos` 格式，彩色余额显示
 - **API Key 安全存储** — 密钥独立存储在本地 `.api-keys.json`，不写入 VS Code 配置
-- **快速添加模板** — 内置火山引擎、DeepSeek、OpenAI 等常用服务商模板
+- **快速添加模板** — 内置火山引擎、DeepSeek、OpenAI、Ollama 等常用服务商模板
 - **CC Switch 导入** — 从 `cc-switch.db` 一键导入已有配置
 - **服务器日志** — 内置日志系统，支持级别筛选和自动轮转
+- **关于页面** — 显示版本信息、许可证、GitHub 链接等
 
 ## 快速开始
 
@@ -53,6 +58,7 @@ Copilot-Model-Manager/
 ├── 启动.bat           # Windows 一键启动脚本
 ├── .api-keys.json     # [自动生成] API Key 存储（已 gitignore）
 ├── .url-history.json  # [自动生成] URL 历史记录（已 gitignore）
+├── .quota-data.json   # [自动生成] 用量限额数据（已 gitignore）
 └── logs/              # [自动生成] 服务器日志（已 gitignore）
 ```
 
@@ -70,6 +76,9 @@ Copilot-Model-Manager/
 | `GET` | `/api/ccswitch` | 读取 CC Switch 数据库 |
 | `POST` | `/api/fetch-models` | 从远程 API 拉取模型列表 |
 | `POST` | `/api/open-config` | 用 VS Code 打开配置文件 |
+| `GET` | `/api/quota` | 读取用量限额数据 |
+| `POST` | `/api/quota` | 保存用量限额数据 |
+| `POST` | `/api/quota/fetch` | 从远程 API 查询用量/余额 |
 | `GET` | `/api/heartbeat` | 心跳检测 |
 | `GET` | `/api/logs` | 读取服务器日志 |
 | `DELETE` | `/api/logs` | 清空日志 |
@@ -82,6 +91,7 @@ Copilot-Model-Manager/
 | VS Code 模型配置 | `%APPDATA%\Code\User\chatLanguageModels.json` |
 | API Key 存储 | 项目目录下 `.api-keys.json` |
 | URL 历史 | 项目目录下 `.url-history.json` |
+| 用量限额数据 | 项目目录下 `.quota-data.json` |
 | CC Switch 数据库 | `~\.cc-switch\cc-switch.db` |
 | 服务器日志 | 项目目录下 `logs/server.log` |
 
