@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copilot Model Manager</title>
+<style>
+:root {
+  --bg: #1e1e1e; --bg2: #252526; --bg3: #2d2d30; --bg4: #3e3e42;
+  --fg: #cccccc; --fg2: #969696; --accent: #0078d4; --accent2: #1177bb;
+  --green: #4ec9b0; --red: #f44747; --yellow: #cca700; --orange: #ce9178;
+  --border: #3e3e42; --shadow: rgba(0,0,0,.36);
+  --radius: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--fg);
+  min-height: 100vh; display: flex; flex-direction: column;
+}
+/* Header */
+.header {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 12px 24px; display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header h1 { font-size: 18px; font-weight: 600; }
+.header h1 span { color: var(--accent); }
+.header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+/* Layout */
+.container { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 52px); }
+.sidebar {
+  width: 300px; min-width: 260px; background: var(--bg2);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  overflow: hidden; flex-shrink: 0;
+}
+.main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px 24px; min-width: 0; }
+
+/* Sidebar */
+.sidebar-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.sidebar-header h2 { font-size: 13px; text-transform: uppercase; color: var(--fg2); letter-spacing: .5px; }
+.provider-list { flex: 1; overflow-y: auto; min-height: 0; }
+.provider-item {
+  padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px; transition: background .15s;
+}
+.provider-item:hover { background: var(--bg3); }
+.provider-item.active { background: var(--bg4); border-left: 3px solid var(--accent); padding-left: 13px; }
+.provider-item .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0;
+}
+.provider-item .info { flex: 1; min-width: 0; }
+.provider-item .name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.provider-item .meta { font-size: 11px; color: var(--fg2); margin-top: 2px; }
+.provider-item .count {
+  background: var(--bg4); color: var(--fg2); font-size: 11px;
+  padding: 2px 7px; border-radius: 10px; flex-shrink: 0;
+}
+
+/* Cards */
+.card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 16px; overflow: hidden;
+}
+.card-header {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-header h3 { font-size: 14px; font-weight: 600; }
+.card-body { padding: 16px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg3); color: var(--fg); font-size: 13px; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.btn:hover { background: var(--bg4); border-color: var(--fg2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-danger { color: var(--red); }
+.btn-danger:hover { background: rgba(244,71,71,.15); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 4px 8px; min-width: 30px; justify-content: center; }
+
+/* Inputs */
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--fg); padding: 7px 10px; font-size: 13px; width: 100%;
+  font-family: inherit; transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); outline: none; }
+textarea { resize: vertical; min-height: 60px; }
+label { display: block; font-size: 12px; color: var(--fg2); margin-bottom: 4px; }
+.form-row { margin-bottom: 12px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-inline { display: flex; gap: 8px; align-items: flex-end; }
+.form-inline .form-row { flex: 1; margin-bottom: 0; }
+
+/* Model Table */
+.model-table { width: 100%; border-collapse: collapse; }
+.model-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; color: var(--fg2);
+  padding: 8px 12px; border-bottom: 1px solid var(--border); letter-spacing: .5px;
+  position: sticky; top: 0; background: var(--bg2);
+}
+.model-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.model-table tr:hover td { background: var(--bg3); }
+.model-table .id { font-family: 'Cascadia Code', 'Fira Code', monospace; color: var(--green); font-size: 12px; }
+.model-table .name-cell { max-width: 200px; }
+.model-table .name-cell input { background: transparent; border: 1px solid transparent; padding: 2px 6px; }
+.model-table .name-cell input:hover { border-color: var(--border); }
+.model-table .name-cell input:focus { border-color: var(--accent); background: var(--bg); }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+}
+.badge-green { background: rgba(78,201,176,.15); color: var(--green); }
+.badge-blue { background: rgba(0,120,212,.15); color: var(--accent); }
+.badge-yellow { background: rgba(204,167,0,.15); color: var(--yellow); }
+.badge-gray { background: var(--bg4); color: var(--fg2); }
+.toggle {
+  width: 36px; height: 20px; border-radius: 10px; background: var(--bg4);
+  position: relative; cursor: pointer; transition: background .2s; border: none;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--fg2);
+  transition: all .2s;
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 18px; background: #fff; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+  width: 560px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 32px var(--shadow);
+}
+.modal-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-header h3 { font-size: 16px; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.modal-footer {
+  padding: 12px 20px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+
+/* Toast */
+.toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  padding: 10px 16px; border-radius: var(--radius); font-size: 13px;
+  box-shadow: 0 4px 12px var(--shadow); animation: slideIn .3s;
+  display: flex; align-items: center; gap: 8px; min-width: 240px;
+}
+.toast-success { background: #1e3a2f; border: 1px solid var(--green); color: var(--green); }
+.toast-error { background: #3a1e1e; border: 1px solid var(--red); color: var(--red); }
+.toast-info { background: #1e2a3a; border: 1px solid var(--accent); color: var(--accent); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Loading */
+.spinner {
+  width: 16px; height: 16px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 40px; color: var(--fg2);
+}
+.empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: .4; }
+.empty-state p { font-size: 14px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg2); }
+
+/* Checkbox */
+.checkbox-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.checkbox-row input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+.checkbox-row label { margin: 0; font-size: 13px; color: var(--fg); cursor: pointer; }
+
+/* Fetch result list */
+.fetch-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.fetch-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.fetch-item:last-child { border-bottom: none; }
+.fetch-item input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+.fetch-item .model-id { font-family: monospace; color: var(--green); flex: 1; }
+.fetch-item .model-owner { color: var(--fg2); font-size: 12px; }
+
+/* Datalist dropdown arrow */
+input[list] { position: relative; }
+input[list]::-webkit-calendar-picker-indicator {
+  opacity: 0.5; cursor: pointer; filter: invert(1);
+}
+input[list]:hover::-webkit-calendar-picker-indicator { opacity: 0.8; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { flex-direction: column; }
+  .sidebar { width: 100%; min-width: unset; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border); }
+  .form-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚡ <span>Copilot</span> Model Manager</h1>
+  <span style="color:var(--fg2);font-size:13px" id="configPath"></span>
+  <div class="header-actions">
+    <button class="btn" onclick="loadConfig()">🔄 刷新</button>
+    <button class="btn" onclick="openConfigFile()">📄 打开配置</button>
+    <button class="btn" onclick="openQuickAdd()">⚡ 快速添加</button>
+    <button class="btn" onclick="openCCSwitchImport()">📥 CC Switch 导入</button>
+    <button class="btn" onclick="openLogViewer()">📋 日志</button>
+    <button class="btn btn-primary" onclick="openAddProvider()">＋ 自定义添加</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Providers</h2>
+    </div>
+    <div class="provider-list" id="providerList"></div>
+  </div>
+  <div class="main" id="mainContent">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      <p>选择左侧的 Provider 查看和管理模型</p>
+    </div>
+  </div>
+</div>
+
+<!-- 添加 Provider 模态框 -->
+<div class="modal-overlay" id="addProviderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>添加 Provider</h3>
+      <button class="btn btn-icon" onclick="closeModal('addProviderModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>名称</label>
+        <input type="text" id="ap_name" placeholder="如: 火山引擎 Coding Plan">
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Vendor</label>
+          <select id="ap_vendor">
+            <option value="customendpoint">Custom Endpoint</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="ollama">Ollama</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>API Type (provider 级)</label>
+          <select id="ap_apiType">
+            <option value="">继承自模型</option>
+            <option value="chat-completions">chat-completions</option>
+            <option value="messages">messages (Anthropic)</option>
+            <option value="responses">responses</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>API Key（存储在本地 .api-keys.json）</label>
+        <div style="display:flex;gap:8px;">
+          <input type="password" id="ap_apiKey" placeholder="sk-..." style="flex:1;">
+          <button class="btn btn-icon btn-sm" onclick="toggleKeyVisibility('ap_apiKey')" title="显示/隐藏">👁</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Base URL（用于自动拉取模型列表）</label>
+        <input type="text" id="ap_baseUrl" placeholder="https://ark.cn-beijing.volces.com/api/coding/v3">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('addProviderModal')">取消</button>
+      <button class="btn btn-primary" onclick="addProvider()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 添加模型模态框 -->
+<div class="modal-overlay" id="addModelModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>添加模型</h3>
+      <button class="btn btn-icon" onclick="closeModal('addModelModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Model ID</label>
+          <input type="text" id="am_id" placeholder="deepseek-v4-pro">
+        </div>
+        <div class="form-row">
+          <label>显示名称</label>
+          <input type="text" id="am_name" placeholder="🔥 DeepSeek V4 Pro">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>URL</label>
+          <input type="text" id="am_url" placeholder="https://api.example.com/v1/chat/completions">
+        </div>
+        <div class="form-row">
+          <label>API Type</label>
+          <select id="am_apiType">
+            <option value="chat-completions">chat-completions</option>
+            <option value="messages">messages (Anthropic)</option>
+            <option value="responses">responses</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Max Input Tokens</label>
+          <input type="number" id="am_maxInput" value="128000">
+        </div>
+        <div class="form-row">
+          <label>Max Output Tokens</label>
+          <input type="number" id="am_maxOutput" value="16000">
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Reasoning Effort</label>
+          <select id="am_reasoning">
+            <option value="">默认</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+          </select>
+        </div>
+        <div class="form-row" style="display:flex;gap:16px;padding-top:20px;">
+          <label class="checkbox-row"><input type="checkbox" id="am_toolCalling" checked> Tool Calling</label>
+          <label class="checkbox-row"><input type="checkbox" id="am_vision"> Vision</label>
+          <label class="checkbox-row"><input type="checkbox" id="am_thinking"> Thinking</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('addModelModal')">取消</button>
+      <button class="btn btn-primary" onclick="addModel()">添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- 自动拉取模型模态框 -->
+<div class="modal-overlay" id="fetchModelsModal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <h3>🔍 自动拉取模型</h3>
+      <button class="btn btn-icon" onclick="closeModal('fetchModelsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-inline" style="margin-bottom:16px;">
+        <div class="form-row">
+          <label>API Key</label>
+          <div style="display:flex;gap:8px;">
+            <input type="password" id="fm_apiKey" placeholder="sk-..." style="flex:1;">
+            <button class="btn btn-icon btn-sm" onclick="toggleKeyVisibility('fm_apiKey')" title="显示/隐藏">👁</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Models URL（留空自动探测）</label>
+          <input type="text" id="fm_url" list="fm_url_list" placeholder="https://api.example.com/v1/models" autocomplete="off">
+          <datalist id="fm_url_list"></datalist>
+        </div>
+        <button class="btn btn-primary" onclick="doFetchModels()" id="fm_fetchBtn">拉取</button>
+      </div>
+      <div id="fm_status" style="font-size:13px;color:var(--fg2);margin-bottom:8px;"></div>
+      <div id="fm_results" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:var(--fg2);" id="fm_count"></span>
+          <button class="btn btn-sm" onclick="toggleAllFetch()">全选/全不选</button>
+        </div>
+        <div class="fetch-list" id="fm_list"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('fetchModelsModal')">取消</button>
+      <button class="btn btn-primary" onclick="importFetchedModels()" id="fm_importBtn" disabled>导入选中</button>
+    </div>
+  </div>
+</div>
+
+<!-- 快速添加模态框 -->
+<div class="modal-overlay" id="quickAddModal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <h3>⚡ 快速添加 Provider</h3>
+      <button class="btn btn-icon" onclick="closeModal('quickAddModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--fg2);font-size:13px;margin-bottom:16px;">选择一个服务商模板，自动填充配置。已添加的会灰显。</p>
+      <div id="quickAddList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('quickAddModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- CC Switch 导入模态框 -->
+<div class="modal-overlay" id="ccswitchModal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <h3>📥 从 CC Switch 导入配置</h3>
+      <button class="btn btn-icon" onclick="closeModal('ccswitchModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--fg2);font-size:13px;margin-bottom:12px;">自动读取 <code id="ccswitchPath">...</code> 中的 Provider 配置。</p>
+      <div id="ccswitchStatus" style="color:var(--fg2);font-size:13px;padding:12px;background:var(--bg);border-radius:6px;">正在加载...</div>
+      <div id="ccswitchList" style="max-height:400px;overflow-y:auto;margin-top:12px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="loadCCSwitch()">🔄 重新扫描</button>
+      <button class="btn" onclick="closeModal('ccswitchModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- API Key 设置模态框 -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <h3>🔑 API Key 管理</h3>
+      <button class="btn btn-icon" onclick="closeModal('apiKeyModal')">✕</button>
+    </div>
+    <div class="modal-body" id="apiKeyBody"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('apiKeyModal')">关闭</button>
+      <button class="btn btn-primary" onclick="saveApiKeys()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 日志查看模态框 -->
+<div class="modal-overlay" id="logViewerModal">
+  <div class="modal" style="width:800px;max-height:85vh;">
+    <div class="modal-header">
+      <h3>📋 服务器日志</h3>
+      <button class="btn btn-icon" onclick="closeModal('logViewerModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div style="display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--border);">
+        <select id="logLevel" onchange="loadLogs()" style="width:auto;">
+          <option value="all">全部级别</option>
+          <option value="debug">Debug</option>
+          <option value="info" selected>Info</option>
+          <option value="warn">Warn</option>
+          <option value="error">Error</option>
+        </select>
+        <select id="logLines" onchange="loadLogs()" style="width:auto;">
+          <option value="50">50 行</option>
+          <option value="100">100 行</option>
+          <option value="200" selected>200 行</option>
+          <option value="500">500 行</option>
+          <option value="1000">1000 行</option>
+        </select>
+        <button class="btn btn-sm" onclick="loadLogs()">🔄 刷新</button>
+        <button class="btn btn-sm btn-danger" onclick="clearLogs()">🗑 清空</button>
+        <div style="flex:1;"></div>
+        <span id="logPath" style="color:var(--fg2);font-size:12px;line-height:30px;"></span>
+      </div>
+      <pre id="logContent" style="margin:0;padding:12px;font-size:12px;line-height:1.6;max-height:500px;overflow-y:auto;background:var(--bg);color:var(--fg);white-space:pre-wrap;word-break:break-all;font-family:'Cascadia Code',Consolas,monospace;"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('logViewerModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// === State ===
+let config = [];
+let apiKeys = {};  // { providerName: { masked, source } }
+let selectedIndex = -1;
+let fetchedModels = [];
+let urlHistory = {};  // { providerName: [url1, url2, ...] }
+
+// === API ===
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// === Load ===
+async function loadConfig() {
+  try {
+    config = await api('GET', '/api/config');
+    const keys = await api('GET', '/api/keys');
+    apiKeys = keys;
+    // 加载 URL 历史
+    try { urlHistory = await api('GET', '/api/url-history'); } catch { urlHistory = {}; }
+    document.getElementById('configPath').textContent = 'chatLanguageModels.json';
+    renderProviders();
+    if (selectedIndex >= 0 && selectedIndex < config.length) {
+      selectProvider(selectedIndex);
+    }
+    toast('配置已加载', 'success');
+  } catch (e) {
+    toast('加载失败: ' + e.message, 'error');
+  }
+}
+
+async function saveConfig() {
+  try {
+    await api('POST', '/api/config', config);
+    toast('配置已保存 ✓', 'success');
+    // 刷新 UI
+    renderProviders();
+    if (selectedIndex >= 0) renderMain();
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+// === Render Providers ===
+function renderProviders() {
+  const list = document.getElementById('providerList');
+  list.innerHTML = config.map((p, i) => {
+    const count = p.models ? p.models.length : 0;
+    const vendor = p.vendor || 'unknown';
+    const active = i === selectedIndex ? 'active' : '';
+    return `
+      <div class="provider-item ${active}" onclick="selectProvider(${i})">
+        <div class="dot" style="background:${vendor === 'customendpoint' ? 'var(--green)' : vendor === 'deepseek' ? 'var(--accent)' : 'var(--yellow)'}"></div>
+        <div class="info">
+          <div class="name">${esc(p.name)}</div>
+          <div class="meta">${esc(vendor)} ${p.apiType ? '· ' + esc(p.apiType) : ''}</div>
+        </div>
+        <span class="count">${count}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// === Select Provider ===
+function selectProvider(index) {
+  selectedIndex = index;
+  renderProviders();
+  renderMain();
+}
+
+// === Render Main ===
+function renderMain() {
+  const p = config[selectedIndex];
+  if (!p) return;
+  const models = p.models || [];
+
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <h3>${esc(p.name)}</h3>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="openFetchModels()">🔍 自动拉取</button>
+          <button class="btn btn-sm" onclick="openAddModel()">＋ 手动添加</button>
+          <button class="btn btn-sm" onclick="openApiKeySettings()">🔑 API Key</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProvider(${selectedIndex})">🗑 删除 Provider</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div style="overflow-x:auto; max-height: 60vh; overflow-y: auto;">
+          <table class="model-table">
+            <thead>
+              <tr>
+                <th style="width:40px;"></th>
+                <th>Model ID</th>
+                <th>显示名称</th>
+                <th>API Type</th>
+                <th style="width:80px;">Vision</th>
+                <th style="width:80px;">Tools</th>
+                <th style="width:80px;">Thinking</th>
+                <th style="width:100px;">Max In</th>
+                <th style="width:100px;">Max Out</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${models.map((m, mi) => `
+                <tr>
+                  <td><span style="color:var(--fg2);font-size:11px;">${mi + 1}</span></td>
+                  <td><span class="id">${esc(m.id)}</span></td>
+                  <td class="name-cell">
+                    <input type="text" value="${esc(m.name || '')}"
+                      onchange="updateModel(${mi},'name',this.value)"
+                      style="width:100%;">
+                  </td>
+                  <td>
+                    <select onchange="updateModel(${mi},'apiType',this.value)" style="width:auto;min-width:120px;">
+                      <option value="chat-completions" ${m.apiType==='chat-completions'?'selected':''}>chat-completions</option>
+                      <option value="messages" ${m.apiType==='messages'?'selected':''}>messages</option>
+                      <option value="responses" ${m.apiType==='responses'?'selected':''}>responses</option>
+                    </select>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="toggle ${m.vision?'on':''}" onclick="toggleModel(${mi},'vision')"></button>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="toggle ${m.toolCalling!==false?'on':''}" onclick="toggleModel(${mi},'toolCalling')"></button>
+                  </td>
+                  <td style="text-align:center;">
+                    <button class="toggle ${m.thinking?'on':''}" onclick="toggleModel(${mi},'thinking')"></button>
+                  </td>
+                  <td>
+                    <input type="number" value="${m.maxInputTokens||''}"
+                      onchange="updateModel(${mi},'maxInputTokens',+this.value)"
+                      style="width:80px;">
+                  </td>
+                  <td>
+                    <input type="number" value="${m.maxOutputTokens||''}"
+                      onchange="updateModel(${mi},'maxOutputTokens',+this.value)"
+                      style="width:80px;">
+                  </td>
+                  <td>
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteModel(${mi})">✕</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${models.length === 0 ? '<div class="empty-state"><p>暂无模型，点击"自动拉取"或"手动添加"</p></div>' : ''}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Provider 详情</h3>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-row">
+            <label>名称</label>
+            <input type="text" value="${esc(p.name)}" onchange="updateProvider('name',this.value)">
+          </div>
+          <div class="form-row">
+            <label>Vendor</label>
+            <input type="text" value="${esc(p.vendor||'')}" onchange="updateProvider('vendor',this.value)">
+          </div>
+          <div class="form-row">
+            <label>API Type (provider 级)</label>
+            <select onchange="updateProvider('apiType',this.value||null)">
+              <option value="" ${!p.apiType?'selected':''}>继承自模型</option>
+              <option value="chat-completions" ${p.apiType==='chat-completions'?'selected':''}>chat-completions</option>
+              <option value="messages" ${p.apiType==='messages'?'selected':''}>messages</option>
+              <option value="responses" ${p.apiType==='responses'?'selected':''}>responses</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>API Key</label>
+            <div style="display:flex;gap:8px;">
+              <input type="password" id="providerApiKey" value="${esc(apiKeys[p.name]?.masked || '')}" disabled style="flex:1;" 
+                placeholder="${apiKeys[p.name]?.source === 'env' ? '(来自环境变量)' : '未配置'}">
+              <button class="btn btn-icon btn-sm" onclick="toggleProviderKeyVisibility()" title="显示/隐藏">👁</button>
+              <button class="btn btn-icon btn-sm" onclick="copyProviderKey()" title="复制">📋</button>
+              <button class="btn btn-sm" onclick="openApiKeySettings()">修改</button>
+            </div>
+            ${apiKeys[p.name]?.source === 'env' ? '<span style="font-size:11px;color:var(--yellow);">⚠ 从环境变量读取，保存后覆盖为文件存储</span>' : ''}
+          </div>
+          <div class="form-row" style="grid-column: span 2;">
+            <label>Base URL（用于自动拉取模型列表）</label>
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="providerBaseUrl" value="${esc(p.models?.[0]?.url?.replace(/\/chat\/completions$/, '/models').replace(/\/v1\/models$/, '/models') || '')}" 
+                placeholder="https://api.example.com/v1/models" style="flex:1;">
+              <button class="btn btn-sm" onclick="saveProviderBaseUrl()">保存</button>
+            </div>
+            <span style="font-size:11px;color:var(--fg2);margin-top:4px;">留空则使用内置默认值。修改后点击"自动拉取"时会使用此 URL。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// === Model CRUD ===
+function updateModel(index, key, value) {
+  config[selectedIndex].models[index][key] = value;
+  saveConfig();
+}
+
+function toggleModel(index, key) {
+  const m = config[selectedIndex].models[index];
+  if (key === 'toolCalling') {
+    m[key] = m[key] === false ? true : !m[key];
+  } else {
+    m[key] = !m[key];
+  }
+  saveConfig();
+  renderMain();
+}
+
+function deleteModel(index) {
+  if (!confirm('确认删除此模型？')) return;
+  config[selectedIndex].models.splice(index, 1);
+  saveConfig();
+  renderMain();
+  renderProviders();
+}
+
+function openAddModel() {
+  const p = config[selectedIndex];
+  // 预填 URL
+  if (p.models && p.models.length > 0) {
+    document.getElementById('am_url').value = p.models[0].url || '';
+    document.getElementById('am_apiType').value = p.models[0].apiType || p.apiType || 'chat-completions';
+  }
+  openModal('addModelModal');
+}
+
+function addModel() {
+  const model = {
+    id: document.getElementById('am_id').value.trim(),
+    name: document.getElementById('am_name').value.trim(),
+    url: document.getElementById('am_url').value.trim(),
+    apiType: document.getElementById('am_apiType').value,
+    toolCalling: document.getElementById('am_toolCalling').checked,
+    vision: document.getElementById('am_vision').checked,
+    maxInputTokens: parseInt(document.getElementById('am_maxInput').value) || 128000,
+    maxOutputTokens: parseInt(document.getElementById('am_maxOutput').value) || 16000,
+  };
+  if (!model.id) return toast('Model ID 不能为空', 'error');
+  if (!model.name) model.name = model.id;
+
+  const reasoning = document.getElementById('am_reasoning').value;
+  if (reasoning) model.reasoningEffort = reasoning;
+  if (document.getElementById('am_thinking').checked) model.thinking = true;
+
+  if (!config[selectedIndex].models) config[selectedIndex].models = [];
+  config[selectedIndex].models.push(model);
+  saveConfig();
+  closeModal('addModelModal');
+  renderMain();
+  renderProviders();
+  // 清空表单
+  ['am_id','am_name'].forEach(id => document.getElementById(id).value = '');
+}
+
+// === Provider CRUD ===
+function updateProvider(key, value) {
+  config[selectedIndex][key] = value;
+  saveConfig();
+  renderProviders();
+}
+
+function saveProviderBaseUrl() {
+  const url = document.getElementById('providerBaseUrl').value.trim();
+  // 保存到 provider 的 _fetchUrl 字段
+  config[selectedIndex]._fetchUrl = url;
+  saveConfig();
+  toast('Base URL 已保存', 'success');
+}
+
+function deleteProvider(index) {
+  if (!confirm(`确认删除 Provider "${config[index].name}"？`)) return;
+  config.splice(index, 1);
+  selectedIndex = Math.min(selectedIndex, config.length - 1);
+  saveConfig();
+  renderProviders();
+  if (selectedIndex >= 0) selectProvider(selectedIndex);
+  else document.getElementById('mainContent').innerHTML = '<div class="empty-state"><p>选择左侧的 Provider 查看和管理模型</p></div>';
+}
+
+function openAddProvider() {
+  ['ap_name','ap_apiKey','ap_baseUrl'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ap_vendor').value = 'customendpoint';
+  document.getElementById('ap_apiType').value = '';
+  openModal('addProviderModal');
+}
+
+function addProvider() {
+  const name = document.getElementById('ap_name').value.trim();
+  if (!name) return toast('名称不能为空', 'error');
+
+  const provider = {
+    name,
+    vendor: document.getElementById('ap_vendor').value,
+    models: [],
+  };
+  const apiType = document.getElementById('ap_apiType').value;
+  if (apiType) provider.apiType = apiType;
+
+  // 保存 API Key
+  const apiKey = document.getElementById('ap_apiKey').value.trim();
+  const isNoKey = document.getElementById('ap_apiKey').disabled;
+  if (apiKey && !isNoKey) {
+    apiKeys[name] = { masked: apiKey.slice(0, 8) + '...', source: 'file' };
+    api('POST', '/api/keys', { [name]: apiKey }).catch(() => {});
+  }
+
+  config.push(provider);
+  selectedIndex = config.length - 1;
+  saveConfig();
+  closeModal('addProviderModal');
+  renderProviders();
+  renderMain();
+
+  // 如果是模板添加，自动拉取模型列表
+  const tmpl = window._quickTemplate;
+  if (tmpl && tmpl.modelsUrl && tmpl.name === name) {
+    window._quickTemplate = null;
+    // 异步拉取，不阻塞 UI
+    setTimeout(async () => {
+      try {
+        const result = await api('POST', '/api/fetch-models', provider);
+        if (result.models && result.models.length > 0) {
+          provider.models = result.models.map(m => ({
+            id: m.id,
+            name: m.name || m.id,
+            url: tmpl.url,
+          }));
+          config[selectedIndex] = provider;
+          saveConfig();
+          renderProviders();
+          renderMain();
+          toast(`自动获取到 ${result.models.length} 个模型`, 'success');
+        }
+      } catch (e) {
+        toast('自动拉取模型失败: ' + e.message + '，可手动添加', 'info');
+      }
+    }, 500);
+  }
+}
+
+// === Fetch Models ===
+// 已知 Provider 的模型列表 URL
+const KNOWN_MODEL_URLS = {
+  '火山引擎 Coding Plan': 'https://ark.cn-beijing.volces.com/api/coding/v3/models',
+  'OpenCode Go': 'https://opencode.ai/zen/go/v1/models',
+  'DeepSeek': 'https://api.deepseek.com/models',
+  'Ollama': 'http://localhost:11434/api/tags',
+};
+
+function openFetchModels() {
+  const p = config[selectedIndex];
+  const keyInfo = apiKeys[p.name];
+  const isOllama = p.vendor === 'ollama' || p.name === 'Ollama';
+  
+  document.getElementById('fm_apiKey').value = '';
+  document.getElementById('fm_apiKey').placeholder = isOllama ? '本地部署，无需 API Key' : (keyInfo?.masked ? `已配置: ${keyInfo.masked}` : 'sk-...');
+  document.getElementById('fm_apiKey').disabled = isOllama;
+  
+  // 获取 URL 列表：优先使用 provider 保存的 URL，然后是历史记录，最后是内置默认
+  const providerUrl = p._fetchUrl || '';
+  const history = urlHistory[p.name] || [];
+  const defaultUrl = KNOWN_MODEL_URLS[p.name] || '';
+  
+  // 合并所有 URL（去重）
+  const allUrls = [providerUrl, ...history, defaultUrl].filter(Boolean);
+  const uniqueUrls = [...new Set(allUrls)];
+  
+  // 更新 datalist
+  const datalist = document.getElementById('fm_url_list');
+  datalist.innerHTML = uniqueUrls.map(u => `<option value="${esc(u)}">`).join('');
+  
+  // 设置当前值：优先 provider 保存的 URL，否则默认
+  document.getElementById('fm_url').value = providerUrl || defaultUrl;
+  
+  if (isOllama) {
+    document.getElementById('fm_status').textContent = '本地 Ollama，自动获取模型列表';
+    document.getElementById('fm_status').style.color = 'var(--green)';
+  } else {
+    document.getElementById('fm_status').textContent = keyInfo?.source ? `API Key 来源: ${keyInfo.source === 'env' ? '环境变量' : '文件存储'}` : '⚠ 未配置 API Key，请先输入';
+    document.getElementById('fm_status').style.color = keyInfo?.source ? 'var(--fg2)' : 'var(--yellow)';
+  }
+  
+  document.getElementById('fm_results').style.display = 'none';
+  fetchedModels = [];
+  openModal('fetchModelsModal');
+}
+
+async function doFetchModels() {
+  const btn = document.getElementById('fm_fetchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 拉取中...';
+  document.getElementById('fm_status').textContent = '正在连接...';
+
+  try {
+    const p = config[selectedIndex];
+    const apiKey = document.getElementById('fm_apiKey').value.trim();
+    const customUrl = document.getElementById('fm_url').value.trim();
+    const isOllama = p.vendor === 'ollama' || p.name === 'Ollama';
+
+    // Ollama 不需要 API Key
+    if (!isOllama) {
+      if (apiKey) {
+        // 保存新输入的 API Key
+        await api('POST', '/api/keys', { [p.name]: apiKey });
+        apiKeys[p.name] = { masked: apiKey.slice(0, 8) + '...', source: 'file' };
+      } else if (!apiKeys[p.name]?.masked) {
+        throw new Error('未配置 API Key，请先输入');
+      }
+    }
+
+    let result;
+    if (customUrl) {
+      // 直接用用户指定的 URL
+      result = await api('POST', '/api/fetch-models', {
+        name: p.name,
+        models: [{ url: customUrl.replace('/models', '/chat/completions') }],
+      });
+    } else {
+      result = await api('POST', '/api/fetch-models', p);
+    }
+
+    fetchedModels = result.models || [];
+    document.getElementById('fm_status').textContent = `从 ${result.url || 'API'} 获取到 ${fetchedModels.length} 个模型`;
+    document.getElementById('fm_status').style.color = 'var(--green)';
+
+    // 保存 URL 到历史记录
+    if (customUrl) {
+      if (!urlHistory[p.name]) urlHistory[p.name] = [];
+      if (!urlHistory[p.name].includes(customUrl)) {
+        urlHistory[p.name].unshift(customUrl);
+        // 最多保留 10 条历史
+        if (urlHistory[p.name].length > 10) urlHistory[p.name] = urlHistory[p.name].slice(0, 10);
+        api('POST', '/api/url-history', urlHistory).catch(() => {});
+      }
+      // 同时保存到 provider 的 _fetchUrl 字段
+      p._fetchUrl = customUrl;
+      saveConfig();
+    }
+
+    // 过滤已存在的
+    const existingIds = new Set((p.models || []).map(m => m.id));
+    const list = document.getElementById('fm_list');
+    list.innerHTML = fetchedModels.map((m, i) => {
+      const exists = existingIds.has(m.id);
+      return `
+        <div class="fetch-item" style="${exists ? 'opacity:.4;' : ''}">
+          <input type="checkbox" id="fm_check_${i}" ${exists ? 'disabled' : 'checked'}>
+          <span class="model-id">${esc(m.id)}</span>
+          <span class="model-owner">${esc(m.owned_by || '')}</span>
+          ${exists ? '<span class="badge badge-gray">已存在</span>' : ''}
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('fm_results').style.display = 'block';
+    document.getElementById('fm_count').textContent = `${fetchedModels.length} 个模型`;
+    document.getElementById('fm_importBtn').disabled = false;
+
+  } catch (e) {
+    document.getElementById('fm_status').textContent = '❌ ' + e.message;
+    document.getElementById('fm_status').style.color = 'var(--red)';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '拉取';
+  }
+}
+
+function toggleAllFetch() {
+  const checks = document.querySelectorAll('#fm_list input[type="checkbox"]:not(:disabled)');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+}
+
+async function importFetchedModels() {
+  const p = config[selectedIndex];
+  const existingIds = new Set((p.models || []).map(m => m.id));
+  let added = 0;
+
+  fetchedModels.forEach((m, i) => {
+    const cb = document.getElementById(`fm_check_${i}`);
+    if (!cb || !cb.checked || cb.disabled) return;
+    if (existingIds.has(m.id)) return;
+
+    // 推断 API Type
+    let apiType = p.apiType || 'chat-completions';
+    let url = '';
+    if (p.models && p.models.length > 0) {
+      url = p.models[0].url || '';
+      if (!apiType && p.models[0].apiType) apiType = p.models[0].apiType;
+    }
+
+    p.models.push({
+      id: m.id,
+      name: m.name || m.id,
+      url,
+      apiType,
+      toolCalling: true,
+      vision: false,
+      maxInputTokens: 128000,
+      maxOutputTokens: 16000,
+    });
+    added++;
+  });
+
+  if (added > 0) {
+    await saveConfig();
+    renderMain();
+    renderProviders();
+    toast(`已导入 ${added} 个模型`, 'success');
+  } else {
+    toast('没有选中任何新模型', 'info');
+  }
+  closeModal('fetchModelsModal');
+}
+
+// === API Key Management ===
+function openApiKeySettings() {
+  const body = document.getElementById('apiKeyBody');
+  body.innerHTML = config.map(p => {
+    const keyInfo = apiKeys[p.name];
+    const hasKey = keyInfo && keyInfo.masked;
+    const source = keyInfo?.source || 'none';
+    return `
+    <div class="form-row">
+      <label>${esc(p.name)} ${source === 'env' ? '<span style="color:var(--yellow);font-size:11px;">(环境变量)</span>' : source === 'file' ? '<span style="color:var(--green);font-size:11px;">(已保存)</span>' : '<span style="color:var(--fg2);font-size:11px;">(未配置)</span>'}</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="key_${esc(p.name)}" value="" style="flex:1;"
+          placeholder="${hasKey ? '已配置: ' + keyInfo.masked : 'sk-...'}">
+        <button class="btn btn-icon btn-sm" onclick="toggleKeyVisibility('key_${esc(p.name)}')" title="显示/隐藏">👁</button>
+        <button class="btn btn-icon btn-sm" onclick="copyKey('${esc(p.name)}')" title="复制">📋</button>
+      </div>
+    </div>
+    `;
+  }).join('') + '<p style="font-size:12px;color:var(--fg2);margin-top:12px;">💡 留空表示不修改。保存后覆盖为文件存储。</p>';
+  openModal('apiKeyModal');
+}
+
+// 切换密码可见性
+function toggleKeyVisibility(inputId) {
+  const input = document.getElementById(inputId);
+  const btn = input.parentElement.querySelector('.btn-icon');
+  if (input.type === 'password') {
+    input.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    if (btn) btn.textContent = '👁';
+  }
+}
+
+// 复制 API Key
+async function copyKey(providerName) {
+  try {
+    const data = await api('GET', `/api/key/${encodeURIComponent(providerName)}`);
+    await navigator.clipboard.writeText(data.key);
+    toast('API Key 已复制到剪贴板', 'success');
+  } catch (e) {
+    toast('复制失败: ' + e.message, 'error');
+  }
+}
+
+// Provider 详情中的 API Key 操作
+function toggleProviderKeyVisibility() {
+  const input = document.getElementById('providerApiKey');
+  const btn = [...input.parentElement.querySelectorAll('button')].find(b => b.onclick && b.onclick.toString().includes('toggleProviderKeyVisibility'));
+  if (input.type === 'password') {
+    // 需要先获取真实值
+    const p = config[selectedIndex];
+    api('GET', `/api/key/${encodeURIComponent(p.name)}`).then(data => {
+      input.value = data.key;
+      input.type = 'text';
+      if (btn) btn.textContent = '🙈';
+    }).catch(() => {
+      toast('无法获取 Key', 'error');
+    });
+  } else {
+    input.type = 'password';
+    input.value = apiKeys[config[selectedIndex].name]?.masked || '';
+    if (btn) btn.textContent = '👁';
+  }
+}
+
+async function copyProviderKey() {
+  const p = config[selectedIndex];
+  try {
+    const data = await api('GET', `/api/key/${encodeURIComponent(p.name)}`);
+    await navigator.clipboard.writeText(data.key);
+    toast('API Key 已复制到剪贴板', 'success');
+  } catch (e) {
+    toast('复制失败: ' + e.message, 'error');
+  }
+}
+
+async function saveApiKeys() {
+  const keys = {};
+  config.forEach(p => {
+    const val = document.getElementById(`key_${p.name}`)?.value?.trim();
+    if (val) keys[p.name] = val;
+  });
+  if (Object.keys(keys).length === 0) {
+    toast('没有输入任何 Key', 'info');
+    return;
+  }
+  try {
+    await api('POST', '/api/keys', keys);
+    // 更新本地状态（转为新格式）
+    for (const [name, val] of Object.entries(keys)) {
+      apiKeys[name] = { masked: val.slice(0, 8) + '...', source: 'file' };
+    }
+    toast('API Keys 已保存', 'success');
+    closeModal('apiKeyModal');
+    // 刷新 UI
+    if (selectedIndex >= 0) renderMain();
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+// === Modal ===
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// === Toast ===
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// === Utils ===
+function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// === 快速添加模板 ===
+const PROVIDER_TEMPLATES = [
+  {
+    name: 'DeepSeek',
+    vendor: 'deepseek',
+    apiType: '',
+    modelsUrl: 'https://api.deepseek.com/models',
+    url: 'https://api.deepseek.com/v1/chat/completions',
+    desc: 'DeepSeek 官方 API，支持 deepseek-chat / deepseek-reasoner',
+    icon: '🔵',
+  },
+  {
+    name: 'Ollama',
+    vendor: 'ollama',
+    apiType: '',
+    modelsUrl: 'http://localhost:11434/api/tags',
+    url: 'http://localhost:11434/v1/chat/completions',
+    desc: '本地部署，无需 API Key，支持任意 Ollama 模型',
+    icon: '🦙',
+    noKey: true,
+  },
+  {
+    name: 'OpenCode Go',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: 'https://opencode.ai/zen/go/v1/models',
+    url: 'https://opencode.ai/zen/go/v1/chat/completions',
+    desc: 'OpenCode Go 服务，13+ 模型（GPT-5 / Claude / Gemini 等）',
+    icon: '🟢',
+  },
+  {
+    name: '火山引擎 Coding Plan',
+    vendor: 'customendpoint',
+    apiType: 'responses',
+    modelsUrl: 'https://ark.cn-beijing.volces.com/api/coding/v3/models',
+    url: 'https://ark.cn-beijing.volces.com/api/coding/v3/chat/completions',
+    desc: '火山引擎 Coding Plan，豆 Seed 系列模型',
+    icon: '🔥',
+  },
+  {
+    name: 'xiaomi',
+    vendor: 'customendpoint',
+    apiType: 'chat-completions',
+    modelsUrl: '',
+    url: 'https://api.xiaomi.com/v1/chat/completions',
+    desc: '小米 AI 服务',
+    icon: '📱',
+  },
+  {
+    name: '硅基流动 SiliconFlow',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: 'https://api.siliconflow.cn/v1/models',
+    url: 'https://api.siliconflow.cn/v1/chat/completions',
+    desc: '硅基流动，国内免费额度，多模型聚合',
+    icon: '💎',
+  },
+  {
+    name: '月之暗面 Moonshot',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: 'https://api.moonshot.cn/v1/models',
+    url: 'https://api.moonshot.cn/v1/chat/completions',
+    desc: '月之暗面 Kimi，长上下文',
+    icon: '🌙',
+  },
+  {
+    name: '智谱 Zhipu',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: 'https://open.bigmodel.cn/api/paas/v4/models',
+    url: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+    desc: '智谱 GLM 系列模型',
+    icon: '🧩',
+  },
+  {
+    name: 'OpenRouter',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: 'https://openrouter.ai/api/v1/models',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    desc: 'OpenRouter 多模型聚合，支持 GPT / Claude / Gemini 等',
+    icon: '🔀',
+  },
+  {
+    name: '自定义 OpenAI 兼容',
+    vendor: 'customendpoint',
+    apiType: '',
+    modelsUrl: '',
+    url: '',
+    desc: '任意 OpenAI 兼容端点，手动填写 URL 和 Key',
+    icon: '⚙️',
+  },
+];
+
+function openQuickAdd() {
+  const existingNames = new Set(config.map(p => p.name));
+  const list = document.getElementById('quickAddList');
+  list.innerHTML = PROVIDER_TEMPLATES.map((t, i) => {
+    const exists = existingNames.has(t.name);
+    return `
+      <div class="fetch-item" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;${exists ? 'opacity:.4;' : 'cursor:pointer;'}" 
+           onclick="${exists ? '' : `quickAddSelect(${i})`}">
+        <span style="font-size:24px;">${t.icon}</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;">${esc(t.name)}</div>
+          <div style="font-size:12px;color:var(--fg2);margin-top:2px;">${esc(t.desc)}</div>
+        </div>
+        ${exists ? '<span class="badge badge-gray">已添加</span>' : '<span class="badge badge-green">选择</span>'}
+      </div>
+    `;
+  }).join('');
+  openModal('quickAddModal');
+}
+
+function quickAddSelect(index) {
+  const t = PROVIDER_TEMPLATES[index];
+  // 填充到添加 Provider 表单
+  document.getElementById('ap_name').value = t.name;
+  document.getElementById('ap_vendor').value = t.vendor;
+  document.getElementById('ap_apiType').value = t.apiType;
+  document.getElementById('ap_baseUrl').value = t.url;
+  document.getElementById('ap_apiKey').value = '';
+  document.getElementById('ap_apiKey').placeholder = t.noKey ? '本地服务，无需 Key' : 'sk-...';
+  document.getElementById('ap_apiKey').disabled = !!t.noKey;
+  closeModal('quickAddModal');
+  openModal('addProviderModal');
+  // 保存模板信息供 addProvider 使用
+  window._quickTemplate = t;
+}
+
+// === CC Switch 导入 ===
+async function openCCSwitchImport() {
+  openModal('ccswitchModal');
+  await loadCCSwitch();
+}
+
+async function loadCCSwitch() {
+  const status = document.getElementById('ccswitchStatus');
+  const list = document.getElementById('ccswitchList');
+  const pathEl = document.getElementById('ccswitchPath');
+  status.textContent = '正在扫描 CC Switch 数据库...';
+  list.innerHTML = '';
+  
+  try {
+    // 先获取路径信息
+    const pathsResp = await fetch('/api/paths');
+    const pathsData = await pathsResp.json();
+    if (pathEl) pathEl.textContent = pathsData.ccswitch || '...';
+    
+    const resp = await fetch('/api/ccswitch');
+    const data = await resp.json();
+    
+    if (!resp.ok) {
+      status.innerHTML = `<span style="color:var(--red)">❌ ${esc(data.error || '读取失败')}</span>`;
+      return;
+    }
+    
+    const { providers } = data;
+    
+    if (!providers.length) {
+      status.innerHTML = '<span style="color:var(--fg2)">未找到自定义 Provider 配置。</span>';
+      return;
+    }
+    
+    status.innerHTML = `<span style="color:var(--green)">✅ 找到 ${providers.length} 个 Provider</span>`;
+    
+    list.innerHTML = providers.map(p => {
+      const hasKey = !!p.apiKey;
+      const isCurrent = p.isCurrent;
+      const maskedKey = p.apiKey ? p.apiKey.slice(0, 8) + '...' + p.apiKey.slice(-4) : '';
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
+          <span style="font-size:24px;">${isCurrent ? '⭐' : '🔗'}</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;">${esc(p.name)} <span style="font-size:11px;color:var(--fg2);">(${esc(p.appType)})</span></div>
+            <div style="font-size:12px;color:var(--fg2);margin-top:2px;">${esc(p.baseUrl || '(使用官方端点)')}</div>
+            ${maskedKey ? `<div style="font-size:11px;color:var(--fg2);margin-top:2px;">🔑 ${esc(maskedKey)}</div>` : ''}
+          </div>
+          <button class="btn btn-primary" style="font-size:12px;" onclick='importCCSwitchProvider(${JSON.stringify(p)})'>📥 导入</button>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--red)">❌ 连接失败: ${esc(e.message)}</span>`;
+  }
+}
+
+function importCCSwitchProvider(p) {
+  if (!p.baseUrl) {
+    alert('该 Provider 没有配置自定义端点，无法导入。');
+    return;
+  }
+  
+  // 填充到添加 Provider 表单
+  document.getElementById('ap_name').value = p.name;
+  document.getElementById('ap_vendor').value = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  document.getElementById('ap_apiType').value = 'openai';
+  document.getElementById('ap_baseUrl').value = p.baseUrl;
+  document.getElementById('ap_apiKey').value = p.apiKey || '';
+  document.getElementById('ap_apiKey').disabled = !p.apiKey;
+  
+  closeModal('ccswitchModal');
+  openModal('addProviderModal');
+}
+
+// === 打开配置文件 ===
+async function openConfigFile() {
+  try {
+    await api('POST', '/api/open-config');
+    toast('已在 VS Code 中打开配置文件', 'success');
+  } catch (e) {
+    toast('打开失败: ' + e.message, 'error');
+  }
+}
+
+// === 日志查看 ===
+async function openLogViewer() {
+  openModal('logViewerModal');
+  await loadLogs();
+}
+
+async function loadLogs() {
+  const level = document.getElementById('logLevel').value;
+  const lines = document.getElementById('logLines').value;
+  const content = document.getElementById('logContent');
+  const pathEl = document.getElementById('logPath');
+  
+  content.textContent = '加载中...';
+  
+  try {
+    const resp = await fetch(`/api/logs?level=${level}&lines=${lines}`);
+    const data = await resp.json();
+    
+    if (!resp.ok) {
+      content.textContent = '加载失败: ' + (data.error || '未知错误');
+      return;
+    }
+    
+    pathEl.textContent = data.path || '';
+    
+    if (!data.logs || data.logs.length === 0) {
+      content.textContent = '暂无日志';
+      return;
+    }
+    
+    // 高亮不同级别的日志
+    content.innerHTML = data.logs.map(line => {
+      let color = 'var(--fg)';
+      if (line.includes('[ERROR]')) color = 'var(--red)';
+      else if (line.includes('[WARN]')) color = 'var(--yellow)';
+      else if (line.includes('[INFO]')) color = 'var(--accent)';
+      else if (line.includes('[DEBUG]')) color = 'var(--fg2)';
+      return `<span style="color:${color}">${esc(line)}</span>`;
+    }).join('\n');
+    
+    // 滚动到底部
+    content.scrollTop = content.scrollHeight;
+    
+  } catch (e) {
+    content.textContent = '连接失败: ' + e.message;
+  }
+}
+
+async function clearLogs() {
+  if (!confirm('确认清空日志？')) return;
+  try {
+    await api('DELETE', '/api/logs');
+    toast('日志已清空', 'success');
+    await loadLogs();
+  } catch (e) {
+    toast('清空失败: ' + e.message, 'error');
+  }
+}
+
+// === 心跳保活 ===
+setInterval(() => { fetch('/api/heartbeat').catch(() => {}); }, 5000);
+
+// === Init ===
+loadConfig();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# === 敏感信息（必须忽略） ===
+# API 密钥存储文件
+.api-keys.json
+
+# URL 历史记录（可能包含敏感端点地址）
+.url-history.json
+
+# 环境变量文件
+.env
+.env.*
+
+# === 运行时产物 ===
+# 日志文件
+logs/
+*.log
+*.log.1
+
+# Node.js 依赖
+node_modules/
+
+# === 操作系统 ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === 编辑器 ===
+.vscode/
+*.swp
+*.swo
+*~

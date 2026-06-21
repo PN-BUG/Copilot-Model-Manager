@@ -1,1 +1,102 @@
-# Copilot-Model-Manager
+# Copilot Model Manager
+
+> GitHub Copilot 自定义模型配置的 GUI 管理工具
+
+管理 VS Code `chatLanguageModels.json` 配置文件，提供可视化界面添加、编辑、删除 Provider 和 Model，支持从远程 API 自动拉取模型列表。
+
+## 功能特性
+
+- **Provider 管理** — 添加/编辑/删除 Provider，支持自定义 Vendor、API Type、Base URL
+- **Model 管理** — 为每个 Provider 配置多个模型，支持 Tool Calling / Vision / Thinking 标记
+- **自动拉取** — 通过 API Key + Models URL 自动获取远程模型列表，一键导入
+- **API Key 安全存储** — 密钥独立存储在本地 `.api-keys.json`，不写入 VS Code 配置
+- **快速添加模板** — 内置火山引擎、DeepSeek、OpenAI 等常用服务商模板
+- **CC Switch 导入** — 从 `cc-switch.db` 一键导入已有配置
+- **服务器日志** — 内置日志系统，支持级别筛选和自动轮转
+
+## 快速开始
+
+### 前置条件
+
+- [Node.js](https://nodejs.org/) >= 14
+
+### 安装 & 启动
+
+```bash
+# 克隆项目
+git clone <repo-url>
+cd Copilot-Model-Manager
+
+# 安装依赖
+npm install
+
+# 启动服务
+npm start
+# 或
+node server.js
+
+# 自定义端口
+node server.js 8080
+```
+
+启动后访问 http://localhost:3456
+
+Windows 用户也可直接双击 `启动.bat`。
+
+## 项目结构
+
+```
+Copilot-Model-Manager/
+├── server.js          # 后端服务（纯 Node.js，无框架依赖）
+├── index.html         # 单文件前端（HTML + CSS + JS）
+├── package.json
+├── 启动.bat           # Windows 一键启动脚本
+├── .api-keys.json     # [自动生成] API Key 存储（已 gitignore）
+├── .url-history.json  # [自动生成] URL 历史记录（已 gitignore）
+└── logs/              # [自动生成] 服务器日志（已 gitignore）
+```
+
+## API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/config` | 读取 chatLanguageModels.json |
+| `POST` | `/api/config` | 写入 chatLanguageModels.json |
+| `GET` | `/api/keys` | 获取所有 Key 名称（脱敏） |
+| `POST` | `/api/keys` | 保存 API Key |
+| `GET` | `/api/key/:name` | 获取指定 Key 明文（用于复制） |
+| `GET` | `/api/url-history` | 获取 URL 历史 |
+| `POST` | `/api/url-history` | 保存 URL 历史 |
+| `GET` | `/api/ccswitch` | 读取 CC Switch 数据库 |
+| `POST` | `/api/fetch-models` | 从远程 API 拉取模型列表 |
+| `POST` | `/api/open-config` | 用 VS Code 打开配置文件 |
+| `GET` | `/api/heartbeat` | 心跳检测 |
+| `GET` | `/api/logs` | 读取服务器日志 |
+| `DELETE` | `/api/logs` | 清空日志 |
+| `GET` | `/api/paths` | 获取所有路径信息 |
+
+## 配置路径
+
+| 文件 | 路径 |
+|------|------|
+| VS Code 模型配置 | `%APPDATA%\Code\User\chatLanguageModels.json` |
+| API Key 存储 | 项目目录下 `.api-keys.json` |
+| URL 历史 | 项目目录下 `.url-history.json` |
+| CC Switch 数据库 | `~\.cc-switch\cc-switch.db` |
+| 服务器日志 | 项目目录下 `logs/server.log` |
+
+## 安全说明
+
+- `.api-keys.json` 包含明文 API Key，已加入 `.gitignore`，**请勿提交到公开仓库**
+- API Key 仅存储在本地，服务端不外传
+- 前端显示 Key 时默认脱敏（`sk-****`），点击眼睛图标临时显示明文
+
+## 技术栈
+
+- **后端**: 纯 Node.js（`http` / `fs` / `path`），零框架依赖
+- **前端**: 单文件 HTML，内嵌 CSS + JS，VS Code 暗色主题风格
+- **数据库读取**: sql.js（可选，用于读取 CC Switch 的 SQLite 数据库）
+
+## License
+
+ISC
