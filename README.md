@@ -99,4 +99,4 @@ Copilot-Model-Manager/
 
 ## License
 
-ISC
+[Apache-2.0](LICENSE)
