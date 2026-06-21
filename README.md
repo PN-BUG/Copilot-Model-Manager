@@ -18,6 +18,8 @@
 - **CC Switch 导入** — 从 `cc-switch.db` 一键导入已有配置
 - **服务器日志** — 内置日志系统，支持级别筛选和自动轮转
 - **关于页面** — 显示版本信息、许可证、GitHub 链接等
+- **独立窗口** — 启动后以 Edge/Chrome App 模式打开独立窗口（无地址栏和标签页）
+- **EXE 打包** — 支持打包为单文件 Windows 可执行程序，双击即用
 
 ## 快速开始
 
@@ -44,9 +46,24 @@ node server.js
 node server.js 8080
 ```
 
-启动后访问 http://localhost:3456
+启动后自动在 Edge/Chrome 独立窗口中打开（无地址栏），无需手动访问浏览器。
 
 Windows 用户也可直接双击 `启动.bat`。
+
+### 打包为 EXE
+
+```bash
+# 一键打包（需要先 npm install）
+双击 build.bat
+```
+
+打包产物为 `CopilotModelManager.exe`（约 42MB），双击即可运行，无需安装 Node.js。
+
+打包说明：
+- 基于 [@yao-pkg/pkg](https://github.com/yao-pkg/pkg) 打包，内含 Node.js 20 运行时
+- 启动后自动在 Edge/Chrome 独立窗口中打开
+- PE 子系统已修补为 GUI 模式，运行时不弹出 CMD 窗口
+- 无 Edge 时自动回退到 Chrome，都没有则用系统默认浏览器
 
 ## 项目结构
 
@@ -56,9 +73,12 @@ Copilot-Model-Manager/
 ├── index.html         # 单文件前端（HTML + CSS + JS）
 ├── package.json
 ├── 启动.bat           # Windows 一键启动脚本
+├── build.bat          # Windows 一键打包脚本
+├── icon.ico           # 应用图标（Edge 窗口左上角）
 ├── .api-keys.json     # [自动生成] API Key 存储（已 gitignore）
 ├── .url-history.json  # [自动生成] URL 历史记录（已 gitignore）
 ├── .quota-data.json   # [自动生成] 用量限额数据（已 gitignore）
+├── .edge-profile/     # [自动生成] Edge 独立窗口数据（已 gitignore）
 └── logs/              # [自动生成] 服务器日志（已 gitignore）
 ```
 
@@ -98,6 +118,10 @@ Copilot-Model-Manager/
 ## 安全说明
 
 - `.api-keys.json` 包含明文 API Key，已加入 `.gitignore`，**请勿提交到公开仓库**
+
+## 许可证
+
+[Apache-2.0](LICENSE)
 - API Key 仅存储在本地，服务端不外传
 - 前端显示 Key 时默认脱敏（`sk-****`），点击眼睛图标临时显示明文
 

@@ -17,15 +17,20 @@ try { initSqlJs = require('sql.js'); } catch {
   console.warn('\x1b[33m[!] sql.js 未安装，CC Switch 导入功能不可用。请运行: npm install\x1b[0m');
 }
 
+// === pkg 打包检测 ===
+const IS_PACKAGED = typeof process.pkg !== 'undefined';
+// 可写文件目录：pkg 模式下放在 exe 旁边，普通模式下放在脚本旁边
+const BASE_DIR = IS_PACKAGED ? path.dirname(process.execPath) : __dirname;
+
 // === 依赖检查 ===
-if (!fs.existsSync(path.join(__dirname, 'node_modules'))) {
+if (!IS_PACKAGED && !fs.existsSync(path.join(__dirname, 'node_modules'))) {
   console.warn('\x1b[33m[!] node_modules 未找到，请先运行: npm install\x1b[0m');
 }
 
 let PORT = parseInt(process.argv[2]) || 3456;
 
 // === 日志系统 ===
-const LOG_DIR = path.join(__dirname, 'logs');
+const LOG_DIR = path.join(BASE_DIR, 'logs');
 const LOG_PATH = path.join(LOG_DIR, 'server.log');
 const LOG_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -88,10 +93,10 @@ const CONFIG_PATH = path.join(
 );
 
 // 本地存储的 API Keys（独立于 chatLanguageModels.json）
-const KEYS_PATH = path.join(__dirname, '.api-keys.json');
+const KEYS_PATH = path.join(BASE_DIR, '.api-keys.json');
 
 // URL 历史记录
-const URL_HISTORY_PATH = path.join(__dirname, '.url-history.json');
+const URL_HISTORY_PATH = path.join(BASE_DIR, '.url-history.json');
 
 // CC Switch 数据库路径
 const CCSWITCH_DB_PATH = path.join(
@@ -100,7 +105,7 @@ const CCSWITCH_DB_PATH = path.join(
 );
 
 // 用量限额数据存储
-const QUOTA_PATH = path.join(__dirname, '.quota-data.json');
+const QUOTA_PATH = path.join(BASE_DIR, '.quota-data.json');
 
 // 环境变量映射（可选，优先级低于 .api-keys.json）
 const ENV_KEY_MAP = {
@@ -626,11 +631,38 @@ function startServer(preferredPort) {
     log.info(`配置: ${CONFIG_PATH}`);
     log.info('='.repeat(50));
 
-    // 自动打开浏览器
+    // 自动打开独立窗口（Edge/Chrome app 模式，无地址栏和标签页）
     const { exec } = require('child_process');
-    try {
-      exec(`start "" "http://localhost:${PORT}"`, { windowsHide: true });
-    } catch {}
+    const appUrl = `http://localhost:${PORT}`;
+
+    // 查找可用的 Chromium 浏览器（Edge / Chrome）
+    const browserPaths = [
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+    ];
+    const browserPath = browserPaths.find(p => { try { return fs.existsSync(p); } catch { return false; } });
+
+    // 图标：打包模式下从 snapshot 复制到磁盘（--icon 需要真实文件路径）
+    const realIconPath = path.join(BASE_DIR, 'icon.ico');
+    if (!fs.existsSync(realIconPath)) {
+      try {
+        const snapshotIcon = path.join(__dirname, 'icon.ico');
+        if (fs.existsSync(snapshotIcon)) fs.copyFileSync(snapshotIcon, realIconPath);
+      } catch {}
+    }
+    const iconArg = fs.existsSync(realIconPath) ? `--icon="${realIconPath}"` : '';
+
+    if (browserPath) {
+      const browserName = path.basename(browserPath, '.exe');
+      const edgeProfile = path.join(BASE_DIR, '.edge-profile');
+      log.info(`浏览器: ${browserName} (独立窗口)`);
+      exec(`"${browserPath}" --app="${appUrl}" --user-data-dir="${edgeProfile}" ${iconArg}`, { windowsHide: true });
+    } else {
+      log.info('浏览器: 系统默认');
+      try { exec(`start "" "${appUrl}"`, { windowsHide: true }); } catch {}
+    }
 
     log.info('按 Ctrl+C 停止');
   });

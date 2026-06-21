@@ -15,6 +15,16 @@ logs/
 *.log
 *.log.1
 
+# Edge 独立窗口的浏览器数据
+.edge-profile/
+
+# 用量限额数据
+.quota-data.json
+
+# 编译产物
+CopilotModelManager.exe
+CopilotModelManager.tmp
+
 # Node.js 依赖
 node_modules/
 
