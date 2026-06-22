@@ -892,7 +892,7 @@ function renderMain() {
           <div class="form-row" style="grid-column: span 2;">
             <label>Base URL（用于自动拉取模型列表）</label>
             <div style="display:flex;gap:8px;">
-              <input type="text" id="providerBaseUrl" value="${esc(p.models?.[0]?.url?.replace(/\/chat\/completions$/, '/models').replace(/\/v1\/models$/, '/models') || '')}" 
+              <input type="text" id="providerBaseUrl" value="${esc(p._fetchUrl || p.models?.[0]?.url?.replace(/\/chat\/completions$/, '/models').replace(/\/v1\/models$/, '/models') || '')}" 
                 placeholder="https://api.example.com/v1/models" style="flex:1;">
               <button class="btn btn-sm" onclick="saveProviderBaseUrl()">保存</button>
             </div>
@@ -1060,6 +1060,7 @@ const KNOWN_MODEL_URLS = {
   'OpenCode Go': 'https://opencode.ai/zen/go/v1/models',
   'DeepSeek': 'https://api.deepseek.com/models',
   'Ollama': 'http://localhost:11434/api/tags',
+  'xiaomi': 'https://token-plan-cn.xiaomimimo.com/v1/models',
 };
 
 function openFetchModels() {
@@ -1619,7 +1620,7 @@ const PROVIDER_TEMPLATES = [
     name: 'xiaomi',
     vendor: 'customendpoint',
     apiType: 'chat-completions',
-    modelsUrl: '',
+    modelsUrl: 'https://token-plan-cn.xiaomimimo.com/v1/models',
     url: 'https://api.xiaomi.com/v1/chat/completions',
     desc: '小米 AI 服务',
     icon: '📱',

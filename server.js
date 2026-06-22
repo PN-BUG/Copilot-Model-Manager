@@ -194,6 +194,7 @@ const KNOWN_MODEL_URLS = {
   'OpenCode Go': 'https://opencode.ai/zen/go/v1/models',
   'DeepSeek': 'https://api.deepseek.com/models',
   'Ollama': 'http://localhost:11434/api/tags',
+  'xiaomi': 'https://token-plan-cn.xiaomimimo.com/v1/models',
 };
 
 async function fetchModels(provider) {
@@ -389,15 +390,30 @@ async function handleRequest(req, res) {
         log.warn('配置文件不存在:', CONFIG_PATH);
         return json(404, { error: '配置文件不存在' });
       }
-      log.info(`配置读取成功: ${config.length} 个 Provider`);
-      return json(200, config);
+      // 前端不需要 apiKey，脱敏返回
+      const safeConfig = Array.isArray(config) ? config.map(p => {
+        const { apiKey, ...rest } = p;
+        return rest;
+      }) : config;
+      log.info(`配置读取成功: ${safeConfig.length} 个 Provider`);
+      return json(200, safeConfig);
     }
 
     // POST /api/config - 保存配置
     if (pathname === '/api/config' && req.method === 'POST') {
       const body = await readBody(req);
-      writeJSON(CONFIG_PATH, body);
-      log.info('配置已保存');
+      // 合并 API Keys 到 config 中，使 chatLanguageModels.json 包含 apiKey
+      const keys = readKeys();
+      const mergedConfig = body.map(p => {
+        const entry = { ...p };
+        const apiKey = keys[p.name];
+        if (apiKey) {
+          entry.apiKey = apiKey;
+        }
+        return entry;
+      });
+      writeJSON(CONFIG_PATH, mergedConfig);
+      log.info('配置已保存（含 API Key 合并）');
       return json(200, { success: true, path: CONFIG_PATH });
     }
 
@@ -432,6 +448,24 @@ async function handleRequest(req, res) {
       const keys = readKeys();
       Object.assign(keys, body);
       writeKeys(keys);
+      // 同步更新 chatLanguageModels.json 中的 apiKey
+      try {
+        const config = readJSON(CONFIG_PATH);
+        if (Array.isArray(config)) {
+          const updatedConfig = config.map(p => {
+            const entry = { ...p };
+            const apiKey = keys[p.name];
+            if (apiKey) {
+              entry.apiKey = apiKey;
+            }
+            return entry;
+          });
+          writeJSON(CONFIG_PATH, updatedConfig);
+          log.info('API Key 已同步到 chatLanguageModels.json');
+        }
+      } catch (e) {
+        log.warn('同步 API Key 到配置文件失败:', e.message);
+      }
       return json(200, { success: true });
     }
 
